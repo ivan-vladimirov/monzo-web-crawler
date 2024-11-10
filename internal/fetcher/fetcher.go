@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,15 +10,23 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
-func FetchLinks(url string, logger *utils.Logger) []string {
+// Define a custom error for 404 Not Found
+var ErrNotFound = errors.New("404 Not Found")
+
+func FetchLinks(url string, logger *utils.Logger) ([]string, error) {
 	res, err := Request(url, logger)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			logger.Info.Println("404 Not Found:", url)
+			return nil, ErrNotFound
+		}
 		logger.Error.Println("Error fetching the page:", err)
-		return nil
+		return nil, err
 	}
+
 	doc, _ := goquery.NewDocumentFromResponse(res)
 	links := extractLinks(doc, logger)
-	return parser.CheckInternal(url, links, logger)
+	return parser.CheckInternal(url, links, logger), nil
 }
 
 func Request(url string, logger *utils.Logger) (*http.Response, error) {
@@ -28,24 +37,30 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
 	logger.Info.Println("Requesting URL:", url)
-	return client.Do(req)
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the response is 404 Not Found
+	if resp.StatusCode == http.StatusNotFound {
+		resp.Body.Close()
+		return nil, ErrNotFound // Return the custom 404 error
+	}
+
+	return resp, nil
 }
 
 func extractLinks(doc *goquery.Document, logger *utils.Logger) map[string]bool {
 	links := make(map[string]bool)
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if link, exists := s.Attr("href"); exists {
-			link = strings.TrimSpace(link)
-
-			// if strings.Contains(link, "#") {
-			// 	logger.Info.Println("Anchor links not supported:", link)
-			// 	return
-			// }
-
-			// Add only if the link is non-empty after trimming
-			if link != "" {
-				links[link] = true
+			if strings.Contains(link, "#") {
+				logger.Info.Println("Ignoring # tag:", link)
+				return
 			}
+			links[link] = true
 		}
 	})
 	return links

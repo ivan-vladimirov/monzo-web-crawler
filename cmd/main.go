@@ -30,8 +30,5 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	// Start crawling
-	wg.Add(1)
-	go crawler.Crawl(*domain, *maxDepth, *delay, crawled, wg, logger)
-
-	wg.Wait()
+	crawler.Crawl(*domain, *maxDepth, *delay, crawled, wg, logger)
 }

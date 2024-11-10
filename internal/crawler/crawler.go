@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
@@ -16,32 +17,39 @@ type UsedURL struct {
 
 
 func Crawl(url string, maxDepth int, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
+	wg.Add(1)
 	defer wg.Done() // Ensure Done() is called when this function returns
 
 	// Limit crawling depth
 	if maxDepth <= 0 {
 		return
 	}
-
-	// Delay between requests
-	time.Sleep(delay)
+	// Normalize the URL to a canonical form to avoid duplicates
+	canonicalURL := parser.NormalizeURL(url)
 
 	// Lock for reading/writing to shared map
 	used.Mux.Lock()
-	if used.URLs[url] {
+	if used.URLs[canonicalURL] {
 		used.Mux.Unlock()
+		
+		logger.Info.Println("Already crawled:", canonicalURL)
 		return
 	}
-	used.URLs[url] = true
+
+	used.URLs[canonicalURL] = true
 	used.Mux.Unlock()
 
-	// Fetch links from the page
-	links := fetcher.FetchLinks(url, logger)
-	logger.Info.Println("Crawled:", url)
+	time.Sleep(delay)
+
+	links, err := fetcher.FetchLinks(canonicalURL, logger)
+	if err != nil {
+		logger.Info.Println("Error fetching ", err)
+	}	
+
+	logger.Info.Println("Crawled:", canonicalURL)
 
 	// Process each found link concurrently with a decreased depth
 	for _, link := range links {
-		wg.Add(1) 
 		go func(link string) {
 			logger.Info.Println("Found↳", link)
 			Crawl(link, maxDepth-1, delay, used, wg, logger)

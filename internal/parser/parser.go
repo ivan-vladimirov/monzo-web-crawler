@@ -8,6 +8,17 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
+// NormalizeURL removes fragments and ensures URLs are in a consistent format
+func NormalizeURL(link string) string {
+	parsedURL, err := url.Parse(link)
+	if err != nil {
+		return link
+	}
+	parsedURL.Fragment = ""
+	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") 
+	return parsedURL.String()
+}
+
 // Function to check if the link is valid and belongs to the same domain
 func CheckInternal(base string, links map[string]bool, logger *utils.Logger) []string {
 	var internalUrls []string
