@@ -1,11 +1,11 @@
 package crawler
 
 import (
-	"log"
 	"sync"
 	"time"
 
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
 type UsedURL struct {
@@ -13,8 +13,10 @@ type UsedURL struct {
 	Mux  sync.RWMutex
 }
 
-func Crawl(url string, maxDepth int, delay time.Duration, used *UsedURL, wg *sync.WaitGroup) {
-	defer wg.Done()
+
+
+func Crawl(url string, maxDepth int, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
+	defer wg.Done() // Ensure Done() is called when this function returns
 
 	// Limit crawling depth
 	if maxDepth <= 0 {
@@ -34,19 +36,15 @@ func Crawl(url string, maxDepth int, delay time.Duration, used *UsedURL, wg *syn
 	used.Mux.Unlock()
 
 	// Fetch links from the page
-	links := fetcher.FetchLinks(url)
-	log.Println("Crawled:", url)
+	links := fetcher.FetchLinks(url, logger)
+	logger.Info.Println("Crawled:", url)
 
 	// Process each found link concurrently with a decreased depth
-	wgLinks := &sync.WaitGroup{}
 	for _, link := range links {
-		wgLinks.Add(1)
+		wg.Add(1) 
 		go func(link string) {
-			defer wgLinks.Done()
-			Crawl(link, maxDepth-1, delay, used, wgLinks)
-			log.Println("Found↳", link)
+			logger.Info.Println("Found↳", link)
+			Crawl(link, maxDepth-1, delay, used, wg, logger)
 		}(link)
 	}
-
-	wgLinks.Wait()
 }
