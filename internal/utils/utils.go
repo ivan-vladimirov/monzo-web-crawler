@@ -5,17 +5,23 @@ import (
 	"strings"
 )
 
-// NormalizeURL removes fragments and query parameters to standardize URLs for comparison.
+// NormalizeURL removes fragments and query parameters, enforces HTTPS, and removes trailing slashes for consistency.
 func NormalizeURL(link string) string {
 	parsedURL, err := url.Parse(link)
 	if err != nil {
-		return link // Return the original link if parsing fails
+		return link
 	}
-	parsedURL.Fragment = "" // Remove fragment
-	parsedURL.RawQuery = "" // Remove query parameters
+
+	parsedURL.Scheme = "https"
+
+	parsedURL.Fragment = ""
+	parsedURL.RawQuery = ""
+
+	// Remove trailing slash
+	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/")
+
 	return parsedURL.String()
 }
-
 // CalculateDepthFromPath determines the depth based on URL path segments relative to the base URL.
 func CalculateDepthFromPath(baseURL, currentURL string) (int, error) {
 	// Parse the base URL to extract the hostname and path
