@@ -3,7 +3,6 @@ package crawler
 import (
 	"sync"
 	"time"
-
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
@@ -15,44 +14,57 @@ type UsedURL struct {
 }
 
 
+func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
+	defer wg.Done() 
 
-func Crawl(url string, maxDepth int, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
-	wg.Add(1)
-	defer wg.Done() // Ensure Done() is called when this function returns
-
-	// Limit crawling depth
-	if maxDepth <= 0 {
+	// Calculate the depth based on the URL path relative to the base
+	depth, err := utils.CalculateDepthFromPath(baseURL, url)
+	if err != nil {
+		logger.Error.Println("Error calculating depth for URL:", url, err)
 		return
 	}
-	// Normalize the URL to a canonical form to avoid duplicates
-	canonicalURL := parser.NormalizeURL(url)
+	if depth > maxDepth {
+		logger.Info.Printf("[MAX DEPTH REACHED] Depth: %d, URL: %s\n", depth, url)
+		return
+	}
 
-	// Lock for reading/writing to shared map
+	canonicalURL := utils.NormalizeURL(url)
+
 	used.Mux.Lock()
 	if used.URLs[canonicalURL] {
 		used.Mux.Unlock()
-		
-		logger.Info.Println("Already crawled:", canonicalURL)
+		logger.Info.Printf("[DUPLICATE] Depth: %d, URL: %s\n", depth, canonicalURL)
 		return
 	}
 
 	used.URLs[canonicalURL] = true
 	used.Mux.Unlock()
 
+	logger.Info.Printf("[CRAWLED] Depth: %d, URL: %s\n", depth, canonicalURL)
+
 	time.Sleep(delay)
 
 	links, err := fetcher.FetchLinks(canonicalURL, logger)
 	if err != nil {
-		logger.Info.Println("Error fetching ", err)
-	}	
+		logger.Info.Printf("[ERROR] Depth: %d, URL: %s, Error: %v\n", depth, canonicalURL, err)
+		return
+	}
 
-	logger.Info.Println("Crawled:", canonicalURL)
+	// Filter internal links from the fetched links
+	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL)
 
-	// Process each found link concurrently with a decreased depth
-	for _, link := range links {
-		go func(link string) {
-			logger.Info.Println("Found↳", link)
-			Crawl(link, maxDepth-1, delay, used, wg, logger)
-		}(link)
+	for _, link := range internalLinks {
+		normalizedLink := utils.NormalizeURL(link)
+
+		// Lock to check if the link has already been crawled
+		used.Mux.Lock()
+		_, alreadyCrawled := used.URLs[normalizedLink]
+		used.Mux.Unlock()
+
+		// Only proceed if the link hasn't been crawled
+		if !alreadyCrawled {
+			wg.Add(1)
+			go Crawl(normalizedLink, maxDepth, baseURL, delay, used, wg, logger)
+		}
 	}
 }

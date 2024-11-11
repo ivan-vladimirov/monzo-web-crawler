@@ -4,7 +4,8 @@ import (
 	"flag"
 	"sync"
 	"time"
-
+	"fmt"
+	"encoding/json"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/crawler"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
@@ -24,6 +25,14 @@ func main() {
 
 	crawled := &crawler.UsedURL{URLs: make(map[string]bool)}
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	crawler.Crawl(*domain, *maxDepth, *domain, *delay, crawled, wg, logger)
+	wg.Wait()
 
-	crawler.Crawl(*domain, *maxDepth, *delay, crawled, wg, logger)
+	prettyPrinted, err := json.MarshalIndent(crawled, "", "  ")
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Print(string(prettyPrinted))
+
 }

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	"github.com/PuerkitoBio/goquery"
-	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
@@ -19,22 +19,30 @@ const MaxRetry = 3
 // RetryDelay defines the delay between retries
 const RetryDelay = 500 * time.Millisecond
 
-func FetchLinks(url string, logger *utils.Logger) ([]string, error) {
+// FetchLinks retrieves all links from a URL, returning a map of URLs or an error if the page couldn't be fetched.
+func FetchLinks(url string, logger *utils.Logger) (map[string]bool, error) {
 	res, err := Request(url, logger)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			logger.Info.Println("404 Not Found:", url)
 			return nil, ErrNotFound
 		}
 		logger.Error.Println("Error fetching the page:", err)
 		return nil, err
 	}
+	defer res.Body.Close()
 
-	doc, _ := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		logger.Error.Println("Error parsing the page:", err)
+		return nil, err
+	}
+
+	// Extract links as a map
 	links := extractLinks(doc, logger)
-	return parser.CheckInternal(url, links, logger), nil
+	return links, nil
 }
 
+// Request makes an HTTP GET request to a URL with retries and returns the response or an error.
 func Request(url string, logger *utils.Logger) (*http.Response, error) {
 	var resp *http.Response
 	var err error
@@ -72,15 +80,22 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 	return nil, err
 }
 
+// extractLinks extracts all href attributes from anchor tags in the document
 func extractLinks(doc *goquery.Document, logger *utils.Logger) map[string]bool {
 	links := make(map[string]bool)
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if link, exists := s.Attr("href"); exists {
-			if strings.Contains(link, "#") {
+			// Skip links that are fragments (starting with "#") or relative (starting with "/")
+			if strings.HasPrefix(link, "#") {
 				logger.Info.Println("Ignoring # tag:", link)
 				return
 			}
+			if strings.HasPrefix(link, "/") {
+				logger.Info.Println("Ignoring relative link:", link)
+				return
+			}
 			links[link] = true
+			logger.Info.Println("Found link:", link)
 		}
 	})
 	return links

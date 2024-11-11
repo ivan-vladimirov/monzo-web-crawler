@@ -8,53 +8,78 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
-// NormalizeURL removes fragments and ensures URLs are in a consistent format
-func NormalizeURL(link string) string {
+
+
+// GetLastPathSegment returns the last segment of a given URL path
+func GetLastPathSegment(link string) string {
 	parsedURL, err := url.Parse(link)
 	if err != nil {
-		return link
+		return ""
 	}
-	parsedURL.Fragment = ""
-	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") 
-	return parsedURL.String()
+	pathSegments := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
+	return pathSegments[len(pathSegments)-1]
 }
 
-// Function to check if the link is valid and belongs to the same domain
-func CheckInternal(base string, links map[string]bool, logger *utils.Logger) []string {
+// CheckInternal filters links, keeping only internal links within the base domain, excluding subdomains and ignoring fragment links.
+func CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string) []string {
 	var internalUrls []string
+
+	// Parse the base URL to extract its hostname
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		logger.Error.Println("Error parsing base URL:", err)
+		return internalUrls // Return empty list if base URL is invalid
+	}
+	baseHostname := baseURL.Hostname()
+
+	// Determine the last segment of the parent URL
+	parentLastSegment := GetLastPathSegment(parentURL)
+
 	for link := range links {
-		if !isValidURL(link, logger) {
+		// Skip links that are just fragments (e.g., "#section")
+		if strings.HasPrefix(link, "#") {
+			logger.Info.Println("Ignoring # tag:", link)
 			continue
 		}
 
-		parsedURL, err := url.Parse(link)
+		// Normalize the link to remove fragments and queries
+		cleanedLink := utils.NormalizeURL(strings.TrimSpace(link))
+
+		// Parse the cleaned link to get details about its structure
+		parsedLink, err := url.Parse(cleanedLink)
 		if err != nil {
-			logger.Error.Println("Error parsing URL:", err)
+			logger.Error.Println("Error parsing link:", cleanedLink, err)
 			continue
 		}
 
-		// Remove the anchor fragment
-		parsedURL.Fragment = ""
-		cleanedLink := parsedURL.String()
-
-		// Process relative and absolute URLs
-		if strings.HasPrefix(cleanedLink, "/") {
+		// Check if the link is absolute and within the base domain
+		if parsedLink.IsAbs() {
+			linkHostname := parsedLink.Hostname()
+			if linkHostname == baseHostname {
+				// Detect recursive paths by comparing the last segment to the parent’s last segment
+				if GetLastPathSegment(parsedLink.Path) == parentLastSegment {
+					logger.Info.Println("Ignoring recursive link:", cleanedLink)
+					continue
+				}
+				internalUrls = append(internalUrls, cleanedLink)
+				logger.Info.Println("Added internal URL:", cleanedLink)
+			} else {
+				logger.Info.Println("Ignored external or subdomain URL:", cleanedLink)
+			}
+		} else {
+			// For relative URLs, resolve them against the base URL
 			resolvedURL := fmt.Sprintf("%s%s", strings.TrimRight(base, "/"), cleanedLink)
+			
+			// Detect recursive paths in relative URLs
+			if GetLastPathSegment(resolvedURL) == parentLastSegment {
+				logger.Info.Println("Ignoring recursive relative URL:", resolvedURL)
+				continue
+			}
+
 			internalUrls = append(internalUrls, resolvedURL)
 			logger.Info.Println("Resolved relative URL to:", resolvedURL)
-		} else if strings.HasPrefix(cleanedLink, base) {
-			internalUrls = append(internalUrls, cleanedLink)
-			logger.Info.Println("Added internal URL:", cleanedLink)
 		}
 	}
-	return internalUrls
-}
 
-// Function to validate the URL's scheme
-func isValidURL(link string, logger *utils.Logger) bool {
-	if !strings.HasPrefix(link, "http://") && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "/") {
-		logger.Info.Println("Ignoring non-http link:", link)
-		return false
-	}
-	return true
+	return internalUrls
 }
