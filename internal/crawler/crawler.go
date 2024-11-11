@@ -1,6 +1,8 @@
 package crawler
 
 import (
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
@@ -18,15 +20,24 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	defer wg.Done() 
 
 	// Calculate the depth based on the URL path relative to the base
-	depth, err := utils.CalculateDepthFromPath(baseURL, url)
+	depth, err := utils.CalculateDepthFromPath(url)
+	logger.Info.Printf("Depth: %d, URL: %s\n", depth, url)
 	if err != nil {
 		logger.Error.Println("Error calculating depth for URL:", url, err)
 		return
 	}
+
 	if depth > maxDepth {
 		logger.Info.Printf("[MAX DEPTH REACHED] Depth: %d, URL: %s\n", depth, url)
 		return
 	}
+	// Skip URLs with file extensions (like .pdf)
+	ext := strings.ToLower(filepath.Ext(url))
+	if ext == ".pdf" || ext == ".jpg" || ext == ".png" || ext == ".docx" {
+		logger.Info.Printf("[SKIPPED FILE] Filetype %s at Depth: %d, URL: %s\n", ext, depth, url)
+		return
+	}
+
 
 	canonicalURL := utils.NormalizeURL(url)
 
