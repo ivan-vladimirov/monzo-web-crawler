@@ -39,8 +39,12 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	}
 
 
-	canonicalURL := utils.NormalizeURL(url)
-
+	canonicalURL, err := utils.NormalizeURL(url)
+	if err != nil {
+		logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
+		return
+	}
+	
 	used.Mux.Lock()
 	if used.URLs[canonicalURL] {
 		used.Mux.Unlock()
@@ -65,8 +69,11 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL)
 
 	for _, link := range internalLinks {
-		normalizedLink := utils.NormalizeURL(link)
-
+		normalizedLink, err := utils.NormalizeURL(link)
+		if err != nil {
+			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", normalizedLink, err)
+			return
+		}
 		// Lock to check if the link has already been crawled
 		used.Mux.Lock()
 		_, alreadyCrawled := used.URLs[normalizedLink]

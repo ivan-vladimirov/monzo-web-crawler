@@ -36,23 +36,23 @@ func CheckInternal(base string, links map[string]bool, logger *utils.Logger, par
 	parentLastSegment := GetLastPathSegment(parentURL)
 
 	for link := range links {
-		// Skip links that are just fragments (e.g., "#section")
 		if strings.HasPrefix(link, "#") {
 			logger.Info.Println("Ignoring # tag:", link)
 			continue
 		}
 
-		// Normalize the link to remove fragments and queries
-		cleanedLink := utils.NormalizeURL(strings.TrimSpace(link))
+		cleanedLink,err := utils.NormalizeURL(strings.TrimSpace(link))
+		if err != nil {
+			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", cleanedLink, err)
+			continue
+		}
 
-		// Parse the cleaned link to get details about its structure
 		parsedLink, err := url.Parse(cleanedLink)
 		if err != nil {
 			logger.Error.Println("Error parsing link:", cleanedLink, err)
 			continue
 		}
 
-		// Check if the link is absolute and within the base domain
 		if parsedLink.IsAbs() {
 			linkHostname := parsedLink.Hostname()
 			if linkHostname == baseHostname {
