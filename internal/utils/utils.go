@@ -3,20 +3,28 @@ package utils
 import (
 	"net/url"
 	"strings"
+	"errors"
+	"strconv"
+	"regexp"
 )
+
+var validURLPattern = regexp.MustCompile(`^(https?|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
+
 
 // NormalizeURL removes fragments and query parameters, enforces HTTPS, and removes trailing slashes for consistency.
 func NormalizeURL(link string) (string, error) {
+	if !validURLPattern.MatchString(link) {
+		return "", errors.New("invalid URL format")
+	}
+
 	parsedURL, err := url.Parse(link)
 	if err != nil {
 		return link, err
 	}
 
-	// Ensure the URL contains a valid port if specified
-	if parsedURL.Port() != "" {
-		_, err := url.ParseRequestURI(parsedURL.Scheme + "://" + parsedURL.Host)
-		if err != nil {
-			return "", err // Return an error if the port is invalid
+	if port := parsedURL.Port(); port != "" {
+		if !isValidPort(port) {
+			return "", errors.New("invalid port specified in URL")
 		}
 	}
 
@@ -25,10 +33,17 @@ func NormalizeURL(link string) (string, error) {
 	parsedURL.Fragment = ""
 	parsedURL.RawQuery = ""
 
-	// Remove trailing slash
 	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/")
 
 	return parsedURL.String(), nil
+}
+
+func isValidPort(port string) bool {
+	portNum, err := strconv.Atoi(port)
+	if err != nil || portNum < 1 || portNum > 65535 {
+		return false
+	}
+	return true
 }
 
 // CalculateDepthFromPath determines the depth based on URL path segments relative to the base URL.
@@ -47,18 +62,4 @@ func CalculateDepthFromPath(currentURL string) (int, error) {
 		}
 	}
 	return nonEmptySegments, nil
-}
-
-// Function to convert user input to a valid URL
-func Domain(ui string) (string, error) {
-	if ui[len(ui)-1:] == "/" {
-		ui = ui[:len(ui)-1]
-	}
-
-	parse, err := url.Parse(ui)
-	if err != nil {
-		return "", err
-	}
-	parse.Scheme = "http"
-	return parse.String(), nil
 }
