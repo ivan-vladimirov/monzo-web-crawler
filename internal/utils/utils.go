@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-var validURLPattern = regexp.MustCompile(`^(https?|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
+var validURLPattern = regexp.MustCompile(`^(https?|http|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
 
 
 // NormalizeURL removes fragments and query parameters, enforces HTTPS, and removes trailing slashes for consistency.

@@ -29,6 +29,11 @@ func FetchLinks(url string, logger *utils.Logger) (map[string]bool, error) {
 		logger.Error.Println("Error fetching the page:", err)
 		return nil, err
 	}
+
+	if res == nil {
+		return nil, errors.New("failed to fetch URL after retries")
+	}
+	
 	defer res.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
