@@ -59,6 +59,7 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 			return nil, err
 		}
 		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
+		
 		logger.Info.Printf("Requesting URL (Attempt %d/%d): %s\n", attempt, MaxRetry, url)
 
 		resp, err = client.Do(req)

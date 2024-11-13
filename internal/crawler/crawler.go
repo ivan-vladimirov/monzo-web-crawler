@@ -62,13 +62,16 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 		logger.Info.Printf("[ERROR] Depth: %d, URL: %s, Error: %v\n", depth, canonicalURL, err)
 		return
 	}
-	//Add only if link is valid and crawlable.
+
 	used.Mux.Lock()
 	used.URLs[canonicalURL] = true
 	used.Mux.Unlock()
 
-	// Filter internal links from the fetched links
 	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL)
+	if len(internalLinks) == 0 {
+		logger.Info.Printf("[SKIPPED] No valid internal links found for URL: %s\n", canonicalURL)
+		return
+	}
 
 	for _, link := range internalLinks {
 		normalizedLink, err := utils.NormalizeURL(link)
@@ -77,9 +80,9 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 			return
 		}
 		// Lock to check if the link has already been crawled
-		used.Mux.Lock()
+		used.Mux.RLock()
 		_, alreadyCrawled := used.URLs[normalizedLink]
-		used.Mux.Unlock()
+		used.Mux.RUnlock()
 
 		// Only proceed if the link hasn't been crawled
 		if !alreadyCrawled {
