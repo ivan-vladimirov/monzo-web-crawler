@@ -51,8 +51,6 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 		logger.Info.Printf("[DUPLICATE] Depth: %d, URL: %s\n", depth, canonicalURL)
 		return
 	}
-
-	used.URLs[canonicalURL] = true
 	used.Mux.Unlock()
 
 	logger.Info.Printf("[CRAWLED] Depth: %d, URL: %s\n", depth, canonicalURL)
@@ -64,6 +62,10 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 		logger.Info.Printf("[ERROR] Depth: %d, URL: %s, Error: %v\n", depth, canonicalURL, err)
 		return
 	}
+	//Add only if link is valid and crawlable.
+	used.Mux.Lock()
+	used.URLs[canonicalURL] = true
+	used.Mux.Unlock()
 
 	// Filter internal links from the fetched links
 	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL)
@@ -71,7 +73,7 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	for _, link := range internalLinks {
 		normalizedLink, err := utils.NormalizeURL(link)
 		if err != nil {
-			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", normalizedLink, err)
+			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
 			return
 		}
 		// Lock to check if the link has already been crawled

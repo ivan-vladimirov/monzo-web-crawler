@@ -56,7 +56,7 @@ func CheckInternal(base string, links map[string]bool, logger *utils.Logger, par
 		if parsedLink.IsAbs() {
 			linkHostname := parsedLink.Hostname()
 			if linkHostname == baseHostname {
-				// Detect recursive paths by comparing the last segment to the parent’s last segment
+
 				if GetLastPathSegment(parsedLink.Path) == parentLastSegment {
 					logger.Info.Println("Ignoring recursive link:", cleanedLink)
 					continue
@@ -65,12 +65,11 @@ func CheckInternal(base string, links map[string]bool, logger *utils.Logger, par
 				logger.Info.Println("Added internal URL:", cleanedLink)
 			} else {
 				logger.Info.Println("Ignored external or subdomain URL:", cleanedLink)
+				continue
 			}
 		} else {
-			// For relative URLs, resolve them against the base URL
 			resolvedURL := fmt.Sprintf("%s%s", strings.TrimRight(base, "/"), cleanedLink)
 			
-			// Detect recursive paths in relative URLs
 			if GetLastPathSegment(resolvedURL) == parentLastSegment {
 				logger.Info.Println("Ignoring recursive relative URL:", resolvedURL)
 				continue
