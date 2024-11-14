@@ -23,16 +23,24 @@ func main() {
 		return
 	}
 
-	crawled := &crawler.UsedURL{URLs: make(map[string]bool)}
+	crawled := &crawler.UsedURL{
+		URLs: make(map[string]bool),
+		VisitedPaths: make(map[string]bool),
+	}
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	crawler.Crawl(*domain, *maxDepth, *domain, *delay, crawled, wg, logger)
 	wg.Wait()
 
-	prettyPrinted, err := json.MarshalIndent(crawled, "", "  ")
+	prettyPrinted, err := json.MarshalIndent(struct {
+		URLs map[string]bool `json:"urls"`
+	}{
+		URLs: crawled.URLs,
+	}, "", "  ")
 	if err != nil {
-		fmt.Println("error:", err)
+		logger.Error.Println("Error while marshalling URLs:", err)
+		return
 	}
-	fmt.Print(string(prettyPrinted))
 
+	fmt.Println(string(prettyPrinted))
 }

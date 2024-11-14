@@ -12,6 +12,7 @@ import (
 
 type UsedURL struct {
 	URLs map[string]bool
+	VisitedPaths map[string]bool
 	Mux  sync.RWMutex
 }
 
@@ -67,7 +68,7 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	used.URLs[canonicalURL] = true
 	used.Mux.Unlock()
 
-	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL)
+	internalLinks := parser.CheckInternal(url, links, logger, canonicalURL,&used.VisitedPaths)
 	if len(internalLinks) == 0 {
 		logger.Info.Printf("[SKIPPED] No valid internal links found for URL: %s\n", canonicalURL)
 		return

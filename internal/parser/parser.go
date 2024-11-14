@@ -1,83 +1,56 @@
 package parser
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
+func CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, visitedPaths *map[string]bool) []string {
+    var internalUrls []string
 
+    baseURL, err := url.Parse(base)
+    if err != nil {
+        logger.Error.Println("Error parsing base URL:", err)
+        return internalUrls
+    }
+    baseHostname := baseURL.Hostname()
 
-// GetLastPathSegment returns the last segment of a given URL path
-func GetLastPathSegment(link string) string {
-	parsedURL, err := url.Parse(link)
-	if err != nil {
-		return ""
-	}
-	pathSegments := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
-	return pathSegments[len(pathSegments)-1]
-}
+    for link := range links {
+        cleanedLink, err := utils.NormalizeURL(strings.TrimSpace(link))
+        if err != nil {
+            logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", link, err)
+            continue
+        }
 
-// CheckInternal filters links, keeping only internal links within the base domain, excluding subdomains and ignoring fragment links.
-func CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string) []string {
-	var internalUrls []string
+        parsedLink, err := url.Parse(cleanedLink)
 
-	// Parse the base URL to extract its hostname
-	baseURL, err := url.Parse(base)
-	if err != nil {
-		logger.Error.Println("Error parsing base URL:", err)
-		return internalUrls // Return empty list if base URL is invalid
-	}
-	baseHostname := baseURL.Hostname()
+        if err != nil {
+            logger.Error.Printf("Error parsing URL: %s, Error: %v\n", cleanedLink, err)
+            continue
+        }
 
-	// Determine the last segment of the parent URL
-	parentLastSegment := GetLastPathSegment(parentURL)
+        // Check if the link is internal
+        if parsedLink.Hostname() != baseHostname {
+            logger.Info.Println("Ignored external URL:", cleanedLink)
+            continue
+        }
 
-	for link := range links {
-		if strings.HasPrefix(link, "#") || strings.HasPrefix(link, "/#") {
-			logger.Info.Println("Ignoring fragment link:", link)
-			continue
-		}
-		cleanedLink,err := utils.NormalizeURL(strings.TrimSpace(link))
-		if err != nil {
-			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", cleanedLink, err)
-			continue
-		}
+        // Detect recursive paths
+        path := parsedLink.Path
+        if (*visitedPaths)[path] {
+            logger.Info.Printf("Ignoring recursive path: %s\n", cleanedLink)
+            continue
+        }
 
-		parsedLink, err := url.Parse(cleanedLink)
-		if err != nil {
-			logger.Error.Println("Error parsing link:", cleanedLink, err)
-			continue
-		}
+        // Mark the path as visited
+        (*visitedPaths)[path] = true
 
-		if parsedLink.IsAbs() {
-			linkHostname := parsedLink.Hostname()
-			if linkHostname == baseHostname {
+        // Add to internal URLs
+        internalUrls = append(internalUrls, cleanedLink)
+        logger.Info.Println("Added internal URL:", cleanedLink)
+    }
 
-				if GetLastPathSegment(parsedLink.Path) == parentLastSegment {
-					logger.Info.Println("Ignoring recursive link:", cleanedLink)
-					continue
-				}
-				internalUrls = append(internalUrls, cleanedLink)
-				logger.Info.Println("Added internal URL:", cleanedLink)
-			} else {
-				logger.Info.Println("Ignored external or subdomain URL:", cleanedLink)
-				continue
-			}
-		} else {
-			resolvedURL := fmt.Sprintf("%s%s", strings.TrimRight(base, "/"), cleanedLink)
-			
-			if GetLastPathSegment(resolvedURL) == parentLastSegment {
-				logger.Info.Println("Ignoring recursive relative URL:", resolvedURL)
-				continue
-			}
-
-			internalUrls = append(internalUrls, resolvedURL)
-			logger.Info.Println("Resolved relative URL to:", resolvedURL)
-		}
-	}
-
-	return internalUrls
+    return internalUrls
 }
