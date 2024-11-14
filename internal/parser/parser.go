@@ -18,7 +18,7 @@ func CheckInternal(base string, links map[string]bool, logger *utils.Logger, par
     baseHostname := baseURL.Hostname()
 
     for link := range links {
-        cleanedLink, err := utils.NormalizeURL(strings.TrimSpace(link))
+        cleanedLink, err := utils.NormalizeURL(strings.TrimSpace(link),parentURL)
         if err != nil {
             logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", link, err)
             continue

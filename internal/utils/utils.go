@@ -6,36 +6,59 @@ import (
 	"errors"
 	"strconv"
 	"regexp"
+	"time"
+	"fmt"
 )
 
-var validURLPattern = regexp.MustCompile(`^(https?|http|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
+var validAbsoluteURLPattern = regexp.MustCompile(`^(https?|http|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
+var validRelativeURLPattern = regexp.MustCompile(`^/[^?#]*$`)
 
+// Helper function to generate random jitter
+func RandFloat() float64 {
+	return float64(time.Now().UnixNano()%1000) / 1000.0
+}
 
-// NormalizeURL removes fragments and query parameters, enforces HTTPS, and removes trailing slashes for consistency.
-func NormalizeURL(link string) (string, error) {
-	if !validURLPattern.MatchString(link) {
-		return "", errors.New("invalid URL format")
-	}
+// NormalizeURL processes a URL to ensure consistency by removing fragments, query parameters, and trailing slashes.
+// For absolute URLs, it enforces HTTPS. For relative URLs, it simply normalizes the path.
+//
+// Parameters:
+// - link (string): The URL or path to be normalized.
+//
+// Returns:
+// - (string, error): A normalized URL if valid, or an error if the format is invalid.
+func NormalizeURL(link string, baseURL string) (string, error) {
+    // Check if the link matches either the absolute or relative URL pattern
+    if !validAbsoluteURLPattern.MatchString(link) && !validRelativeURLPattern.MatchString(link) {
+        return "", errors.New("invalid URL format")
+    }
 
-	parsedURL, err := url.Parse(link)
-	if err != nil {
-		return link, err
-	}
+    // Parse the URL
+    parsedURL, err := url.Parse(link)
+    if err != nil {
+        return "", fmt.Errorf("error parsing URL: %v", err)
+    }
 
-	if port := parsedURL.Port(); port != "" {
-		if !isValidPort(port) {
-			return "", errors.New("invalid port specified in URL")
-		}
-	}
+    // Validate port if present
+    if port := parsedURL.Port(); port != "" && !isValidPort(port) {
+        return "", errors.New("invalid port specified in URL")
+    }
 
-	parsedURL.Scheme = "https"
+    // If the URL is relative, resolve it against the base URL
+    if parsedURL.Scheme == "" {
+        base, err := url.Parse(baseURL)
+        if err != nil {
+            return "", fmt.Errorf("error parsing base URL: %v", err)
+        }
+        parsedURL = base.ResolveReference(parsedURL)
+    }
 
-	parsedURL.Fragment = ""
-	parsedURL.RawQuery = ""
+    // Normalize the URL
+    parsedURL.Scheme = "https"     // Enforce HTTPS for absolute URLs
+    parsedURL.Fragment = ""        // Remove fragments
+    parsedURL.RawQuery = ""        // Remove query parameters
+    parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") // Remove trailing slashes
 
-	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/")
-
-	return parsedURL.String(), nil
+    return parsedURL.String(), nil
 }
 
 func isValidPort(port string) bool {

@@ -16,11 +16,34 @@ type UsedURL struct {
 	Mux  sync.RWMutex
 }
 
-
+var (
+    rateLimiter = time.NewTicker(100 * time.Millisecond)
+    workerPool  = make(chan struct{}, 10)              
+)
+// Crawl recursively visits a given URL and extracts internal links within the same domain and subdomain.
+// It ensures depth constraints, avoids duplicate crawling using a mutex-protected map, and filters out
+// unnecessary links such as those pointing to non-HTML files or fragments.
+//
+// Parameters:
+// - url (string): The URL to be crawled.
+// - maxDepth (int): The maximum depth of recursion allowed.
+// - baseURL (string): The base URL of the domain to restrict crawling.
+// - delay (time.Duration): The delay between requests to avoid overloading the server.
+// - used (*UsedURL): A shared structure for tracking visited URLs and visited paths, ensuring thread safety.
+// - wg (*sync.WaitGroup): A WaitGroup to synchronize goroutines and ensure all crawls complete before returning.
+// - logger (*utils.Logger): A logger instance for structured and detailed logging.
+//
+// Behavior:
+// - Normalizes the URL to maintain consistency and detect duplicates.
+// - Skips URLs exceeding max depth, those with invalid formats, or non-HTML file extensions.
+// - Fetches links from the URL using the fetcher package, then filters internal links via the parser package.
+// - Uses concurrency with goroutines to crawl multiple links in parallel, while ensuring thread safety.
+//
+// Errors:
+// - Logs and skips invalid URLs, fetch failures, or errors during normalization and parsing.
 func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
 	defer wg.Done() 
 
-	// Calculate the depth based on the URL path relative to the base
 	depth, err := utils.CalculateDepthFromPath(url)
 	logger.Info.Printf("Depth: %d, URL: %s\n", depth, url)
 	if err != nil {
@@ -32,7 +55,6 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 		logger.Info.Printf("[MAX DEPTH REACHED] Depth: %d, URL: %s\n", depth, url)
 		return
 	}
-	// Skip URLs with file extensions (like .pdf)
 	ext := strings.ToLower(filepath.Ext(url))
 	if ext == ".pdf" || ext == ".jpg" || ext == ".png" || ext == ".docx" {
 		logger.Info.Printf("[SKIPPED FILE] Filetype %s at Depth: %d, URL: %s\n", ext, depth, url)
@@ -40,7 +62,7 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	}
 
 
-	canonicalURL, err := utils.NormalizeURL(url)
+	canonicalURL, err := utils.NormalizeURL(url,baseURL)
 	if err != nil {
 		logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
 		return
@@ -53,10 +75,13 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 		return
 	}
 	used.Mux.Unlock()
+    workerPool <- struct{}{}
+    defer func() { <-workerPool }()
 
+    <-rateLimiter.C
 	logger.Info.Printf("[CRAWLED] Depth: %d, URL: %s\n", depth, canonicalURL)
 
-	time.Sleep(delay)
+
 
 	links, err := fetcher.FetchLinks(canonicalURL, logger)
 	if err != nil {
@@ -75,17 +100,16 @@ func Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *
 	}
 
 	for _, link := range internalLinks {
-		normalizedLink, err := utils.NormalizeURL(link)
+		normalizedLink, err := utils.NormalizeURL(link,baseURL)
 		if err != nil {
 			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
 			return
 		}
-		// Lock to check if the link has already been crawled
+
 		used.Mux.RLock()
 		_, alreadyCrawled := used.URLs[normalizedLink]
 		used.Mux.RUnlock()
 
-		// Only proceed if the link hasn't been crawled
 		if !alreadyCrawled {
 			wg.Add(1)
 			go Crawl(normalizedLink, maxDepth, baseURL, delay, used, wg, logger)
