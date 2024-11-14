@@ -10,6 +10,16 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
+type Fetcher struct {
+	client *http.Client
+}
+
+func NewFetcher(timeout time.Duration) *Fetcher {
+	return &Fetcher{
+		client: &http.Client{Timeout: timeout},
+	}
+}
+
 // Define a custom error for 404 Not Found
 var ErrNotFound = errors.New("404 Not Found")
 
@@ -23,7 +33,7 @@ const InitialRetryDelay = 500 * time.Millisecond
 const RequestTimeout = 1 * time.Second
 
 // FetchLinks retrieves all links from a URL, returning a map of URLs or an error if the page couldn't be fetched.
-func FetchLinks(url string, logger *utils.Logger) (map[string]bool, error) {
+func (f *Fetcher) FetchLinks(url string, logger *utils.Logger) (map[string]bool, error) {
 	res, err := Request(url, logger)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -91,7 +101,7 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 		if err == nil && resp.StatusCode == http.StatusOK {
 			return resp, nil
 		}
-		
+
 		if resp != nil {
 			resp.Body.Close()
 		}

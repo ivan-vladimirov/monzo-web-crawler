@@ -6,6 +6,8 @@ import (
 	"time"
 	"fmt"
 	"encoding/json"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/crawler"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
@@ -22,20 +24,27 @@ func main() {
 		logger.Error.Println("USAGE: ./monzo-web-crawler -url=http://monzo.com -max-depth=3 -delay=100ms")
 		return
 	}
+	fetcher := fetcher.NewFetcher(10 * time.Second)
+	parser := parser.NewParser()
+	rateLimiter := time.NewTicker(100 * time.Millisecond)
+	defer rateLimiter.Stop()
+
+	cr := crawler.NewCrawler(fetcher, parser, logger, rateLimiter, 10)
 
 	crawled := &crawler.UsedURL{
-		URLs: make(map[string]bool),
+		CrawledURLs:         make(map[string]bool),
 		VisitedPaths: make(map[string]bool),
 	}
 	wg := &sync.WaitGroup{}
+
 	wg.Add(1)
-	crawler.Crawl(*domain, *maxDepth, *domain, *delay, crawled, wg, logger)
+	cr.Crawl(*domain, *maxDepth, *domain, *delay, crawled, wg, logger)
 	wg.Wait()
 
 	prettyPrinted, err := json.MarshalIndent(struct {
 		URLs map[string]bool `json:"urls"`
 	}{
-		URLs: crawled.URLs,
+		URLs: crawled.CrawledURLs,
 	}, "", "  ")
 	if err != nil {
 		logger.Error.Println("Error while marshalling URLs:", err)

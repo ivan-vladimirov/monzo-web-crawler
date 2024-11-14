@@ -7,7 +7,13 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 
-func CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, visitedPaths *map[string]bool) []string {
+type Parser struct{}
+
+func NewParser() *Parser {
+	return &Parser{}
+}
+
+func (p *Parser)  CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, visitedPaths *map[string]bool) []string {
     var internalUrls []string
 
     baseURL, err := url.Parse(base)
