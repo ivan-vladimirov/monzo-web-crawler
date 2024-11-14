@@ -5,6 +5,26 @@ import (
 
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
+func TestIsExcludedFileType(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		expected bool
+	}{
+		{"Excluded file type - PDF", "https://example.com/file.pdf", true},
+		{"Excluded file type - PNG", "https://example.com/photo.png", true},
+		{"Non-excluded file type - HTML", "https://example.com/index.html", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := utils.IsExcludedFileType(test.url)
+			if result != test.expected {
+				t.Errorf("IsExcludedFileType(%q) = %v; want %v", test.url, result, test.expected)
+			}
+		})
+	}
+}
 
 func TestCalculateDepthFromPath(t *testing.T) {
 	testCases := []struct {
@@ -80,6 +100,7 @@ func TestNormalizeURL(t *testing.T) {
 
 		// Different Schemes
 		{"ftp://example.com/path", "https://example.com/path", false},
+		{"smtp://example.com/path", "https://example.com/path", false},
 		{"example.com/path", "https://example.com/path", false},
 		{"http://example.com/path/to/resource", "https://example.com/path/to/resource", false},
 

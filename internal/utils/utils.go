@@ -8,14 +8,27 @@ import (
 	"regexp"
 	"time"
 	"fmt"
+	"path/filepath"
 )
 
-var validAbsoluteURLPattern = regexp.MustCompile(`^((https?|ftp):\/\/)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(:[0-9]{1,5})?(\/.*)?$`)
+var validAbsoluteURLPattern = regexp.MustCompile(`^((https?|ftp):\/\/)?(([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|(\d{1,3}(\.\d{1,3}){3})|(\[([a-fA-F0-9:]+)\]))(:[0-9]{1,5})?(\/.*)?$`)
 var validRelativeURLPattern = regexp.MustCompile(`^/[^?#]*$`)
+var excludedFileTypes = []string{".pdf", ".jpg", ".png", ".docx"}
 
 // Helper function to generate random jitter
 func RandFloat() float64 {
 	return float64(time.Now().UnixNano()%1000) / 1000.0
+}
+
+// Helper function to check if url has an excluded file type.
+func IsExcludedFileType(url string) bool {
+    ext := strings.ToLower(filepath.Ext(url))
+    for _, excluded := range excludedFileTypes {
+        if ext == excluded {
+            return true
+        }
+    }
+    return false
 }
 
 // NormalizeURL processes a URL to ensure consistency by removing fragments, query parameters, and trailing slashes.
@@ -54,7 +67,6 @@ func NormalizeURL(link string, baseURL string) (string, error) {
 			parsedURL = base.ResolveReference(parsedURL)
 		}
     }
-
 
     parsedURL.Scheme = "https"     
     parsedURL.Fragment = ""        

@@ -1,8 +1,6 @@
 package crawler
 
 import (
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
@@ -101,20 +99,19 @@ func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Du
 		logger.Info.Printf("[MAX DEPTH REACHED] Depth: %d, URL: %s\n", depth, url)
 		return
 	}
-	ext := strings.ToLower(filepath.Ext(url))
-	if ext == ".pdf" || ext == ".jpg" || ext == ".png" || ext == ".docx" {
-		logger.Info.Printf("[SKIPPED FILE] Filetype %s at Depth: %d, URL: %s\n", ext, depth, url)
+
+	if utils.IsExcludedFileType(url) {
+		logger.Info.Printf("[SKIPPED FILE] Filetype at Depth: %d, URL: %s\n", depth, url)
 		return
 	}
 
 
 	canonicalURL, err := utils.NormalizeURL(url,baseURL)
 	if err != nil {
-		logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
+		logger.Error.Printf("[MALFORMED] Skipping malformed URL: %s, Error: %v\n", url, err)
 		return
 	}
 	
-	// Check if the URL has already been visited
 	if used.IsCrawledURL(canonicalURL) {
 		logger.Info.Printf("[DUPLICATE] Depth: %d, URL: %s\n", depth, canonicalURL)
 		return
@@ -142,7 +139,7 @@ func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Du
 	for _, link := range internalLinks {
 		normalizedLink, err := utils.NormalizeURL(link,baseURL)
 		if err != nil {
-			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", url, err)
+			logger.Error.Printf("[MALFORMED] Skipping malformed URL: %s, Error: %v\n", url, err)
 			return
 		}
 
