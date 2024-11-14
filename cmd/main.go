@@ -53,7 +53,6 @@ func main() {
 		return
 	}
 
-	// Save JSON to file
 	err1 := utils.SaveJSONToFile(crawledJSON, *outputFile)
 	if err1 != nil {
 		logger.Error.Printf("Failed to save JSON to file: %v", err)

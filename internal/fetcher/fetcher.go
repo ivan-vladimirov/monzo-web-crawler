@@ -146,15 +146,10 @@ func extractLinks(doc *goquery.Document, logger *utils.Logger) map[string]bool {
 	links := make(map[string]bool)
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if link, exists := s.Attr("href"); exists {
-			// Skip links that are fragments (starting with "#") or relative (starting with "/")
 			if strings.HasPrefix(link, "#") {
 				logger.Info.Println("Ignoring # tag:", link)
 				return
 			}
-			// if strings.HasPrefix(link, "/") {
-			// 	logger.Info.Println("Ignoring relative link:", link)
-			// 	return
-			// }
 			links[link] = true
 			logger.Info.Println("Found link:", link)
 		}
