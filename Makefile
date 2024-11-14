@@ -1,55 +1,37 @@
 # Variables
 APP_NAME := monzo-web-crawler
 GO := go
-SRC := $(shell find . -name '*.go')
-PKGS := $(shell $(GO) list ./...)
+# Default values for custom flags
+URL ?= http://monzo.com
+MAX_DEPTH ?= 3
+DELAY ?= 100ms
+FILENAME ?= crawled.json
 
-# Default target
-all: build
+.PHONY: build run clean help
 
-# Build the application
-build: $(SRC)
-	@echo "Building $(APP_NAME)..."
-	$(GO) build -o $(APP_NAME) ./cmd/main.go
-	@echo "Build complete: $(APP_NAME)"
+# Build the monzo-web-crawler binary
+build:
+	@echo "Building the$(APP_NAME) binary..."
+	go build -o monzo-web-crawler ./cmd
 
-# Run the application with example flags
+# Run the monzo-web-crawler with custom flags
 run: build
-	@echo "Running $(APP_NAME)..."
-	./$(APP_NAME) -url=https://monzo.com -max-depth=3 -delay=100ms
+	@echo "Running $(APP_NAME) with:"
+	@echo "  URL: $(URL)"
+	@echo "  Max Depth: $(MAX_DEPTH)"
+	@echo "  Delay: $(DELAY)"
+	@./monzo-web-crawler -url=$(URL) -max-depth=$(MAX_DEPTH) -delay=$(DELAY) -
 
-# Run tests with coverage
-test:
-	@echo "Running tests..."
-	$(GO) test -v -cover ./...
-
-# Format code
-fmt:
-	@echo "Formatting code..."
-	$(GO) fmt ./...
-
-# Lint code (optional, requires golangci-lint)
-lint:
-	@echo "Running lint checks..."
-	@golangci-lint run ./... || echo "Linting skipped: install golangci-lint for lint checks."
-
-# Clean up generated files
+# Clean target to remove build artifacts
 clean:
-	@echo "Cleaning up..."
-	rm -f $(APP_NAME)
-	@echo "Cleanup complete."
+	@echo "Cleaning up build artifacts..."
+	rm -rf $(APP_NAME) logs/ coverage.out
 
-# Display help
+# Help target to display usage
 help:
-	@echo "Monzo Coding Challenge Makefile"
 	@echo "Available targets:"
-	@echo "  build       Build the crawler application."
-	@echo "  run         Build and run the crawler with example flags."
-	@echo "  test        Run tests with coverage."
-	@echo "  fmt         Format the code using 'go fmt'."
-	@echo "  lint        Run lint checks (optional: requires golangci-lint)."
-	@echo "  clean       Clean up generated files."
-	@echo "  help        Display this help message."
-
-# Phony targets
-.PHONY: all build run test fmt lint clean help
+	@echo "  build     - Build the $(APP_NAME) binary"
+	@echo "  run       - Build and run the $(APP_NAME) (customizable with URL, MAX_DEPTH, and DELAY)"
+	@echo "             e.g., make run URL=http://example.com MAX_DEPTH=5 DELAY=200ms"
+	@echo "  clean     - Clean up build artifacts and logs"
+	@echo "  help      - Show this help message"

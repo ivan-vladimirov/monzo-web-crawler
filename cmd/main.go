@@ -1,15 +1,16 @@
 package main
 
 import (
-	"flag"
-	"sync"
-	"time"
-	"fmt"
 	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/crawler"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
-	"github.com/ivan-vladimirov/monzo-web-crawler/internal/crawler"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"sync"
+	"time"
 )
 
 func main() {
@@ -17,11 +18,12 @@ func main() {
 
 	domain := flag.String("url", "", "Starting URL for the web crawler")
 	maxDepth := flag.Int("max-depth", 3, "Maximum depth to crawl")
+	outputFile := flag.String("output", "output.json", "File to save the JSON output")
 	delay := flag.Duration("delay", 100*time.Millisecond, "Delay between requests (e.g., 100ms, 1s)")
 	flag.Parse()
 
 	if *domain == "" {
-		logger.Error.Println("USAGE: ./monzo-web-crawler -url=http://monzo.com -max-depth=3 -delay=100ms")
+		logger.Error.Println("USAGE: ./monzo-web-crawler -url=http://monzo.com -max-depth=3 -delay=100ms -output=mozno.json")
 		return
 	}
 	fetcher := fetcher.NewFetcher(10 * time.Second)
@@ -32,7 +34,7 @@ func main() {
 	cr := crawler.NewCrawler(fetcher, parser, logger, rateLimiter, 10)
 
 	crawled := &crawler.UsedURL{
-		CrawledURLs:         make(map[string]bool),
+		CrawledURLs:  make(map[string]bool),
 		VisitedPaths: make(map[string]bool),
 	}
 	wg := &sync.WaitGroup{}
@@ -41,7 +43,7 @@ func main() {
 	cr.Crawl(*domain, *maxDepth, *domain, *delay, crawled, wg, logger)
 	wg.Wait()
 
-	prettyPrinted, err := json.MarshalIndent(struct {
+	crawledJSON, err := json.MarshalIndent(struct {
 		URLs map[string]bool `json:"urls"`
 	}{
 		URLs: crawled.CrawledURLs,
@@ -51,5 +53,13 @@ func main() {
 		return
 	}
 
-	fmt.Println(string(prettyPrinted))
+	// Save JSON to file
+	err1 := utils.SaveJSONToFile(crawledJSON, *outputFile)
+	if err1 != nil {
+		logger.Error.Printf("Failed to save JSON to file: %v", err)
+		os.Exit(1)
+	}
+	
+
+	fmt.Println(string(crawledJSON))
 }

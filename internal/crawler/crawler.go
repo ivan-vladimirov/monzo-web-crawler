@@ -1,20 +1,19 @@
 package crawler
 
 import (
-	"sync"
-	"time"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"sync"
+	"time"
 )
 
 // UsedURL is a thread-safe structure for tracking visited CrawledURLs.
 type UsedURL struct {
-	CrawledURLs map[string]bool
+	CrawledURLs  map[string]bool
 	VisitedPaths map[string]bool
-	Mux  sync.RWMutex
+	Mux          sync.RWMutex
 }
-
 
 // Check if a URL is already visited (thread-safe read).
 func (u *UsedURL) IsCrawledURL(url string) bool {
@@ -44,14 +43,12 @@ func (u *UsedURL) IsVisitedPath(path string) bool {
 	return u.VisitedPaths[path]
 }
 
-
 type Crawler struct {
 	fetcher     *fetcher.Fetcher
 	parser      *parser.Parser
 	logger      *utils.Logger
 	rateLimiter *time.Ticker
 	workerPool  chan struct{}
-
 }
 
 func NewCrawler(fetcher *fetcher.Fetcher, parser *parser.Parser, logger *utils.Logger, rateLimiter *time.Ticker, workerPoolSize int) *Crawler {
@@ -85,8 +82,8 @@ func NewCrawler(fetcher *fetcher.Fetcher, parser *parser.Parser, logger *utils.L
 //
 // Errors:
 // - Logs and skips invalid URLs, fetch failures, or errors during normalization and parsing.
-func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
-	defer wg.Done() 
+func (c *Crawler) Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
+	defer wg.Done()
 
 	depth, err := utils.CalculateDepthFromPath(url)
 	logger.Info.Printf("Depth: %d, URL: %s\n", depth, url)
@@ -105,21 +102,20 @@ func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Du
 		return
 	}
 
-
-	canonicalURL, err := utils.NormalizeURL(url,baseURL)
+	canonicalURL, err := utils.NormalizeURL(url, baseURL)
 	if err != nil {
 		logger.Error.Printf("[MALFORMED] Skipping malformed URL: %s, Error: %v\n", url, err)
 		return
 	}
-	
+
 	if used.IsCrawledURL(canonicalURL) {
 		logger.Info.Printf("[DUPLICATE] Depth: %d, URL: %s\n", depth, canonicalURL)
 		return
 	}
 
-    c.workerPool <- struct{}{}
-    defer func() { <-c.workerPool }()
-    <-c.rateLimiter.C
+	c.workerPool <- struct{}{}
+	defer func() { <-c.workerPool }()
+	<-c.rateLimiter.C
 
 	logger.Info.Printf("[CRAWLED] Depth: %d, URL: %s\n", depth, canonicalURL)
 
@@ -130,14 +126,14 @@ func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Du
 	}
 	used.AddCrawledURL(canonicalURL)
 
-	internalLinks := c.parser.CheckInternal(url, links, logger, canonicalURL,&used.VisitedPaths)
+	internalLinks := c.parser.CheckInternal(url, links, logger, canonicalURL, &used.VisitedPaths)
 	if len(internalLinks) == 0 {
 		logger.Info.Printf("[SKIPPED] No valid internal links found for URL: %s\n", canonicalURL)
 		return
 	}
 
 	for _, link := range internalLinks {
-		normalizedLink, err := utils.NormalizeURL(link,baseURL)
+		normalizedLink, err := utils.NormalizeURL(link, baseURL)
 		if err != nil {
 			logger.Error.Printf("[MALFORMED] Skipping malformed URL: %s, Error: %v\n", url, err)
 			return

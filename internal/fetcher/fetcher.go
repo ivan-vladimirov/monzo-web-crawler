@@ -46,7 +46,7 @@ func (f *Fetcher) FetchLinks(url string, logger *utils.Logger) (map[string]bool,
 	if res == nil {
 		return nil, errors.New("failed to fetch URL after retries")
 	}
-	
+
 	defer res.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -83,7 +83,7 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 	var err error
 
 	client := &http.Client{
-		Timeout: RequestTimeout, 
+		Timeout: RequestTimeout,
 	}
 
 	retryDelay := InitialRetryDelay
@@ -94,7 +94,7 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 			return nil, err
 		}
 		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MonzoCrawler/1.0)")
-		
+
 		logger.Info.Printf("Requesting URL (Attempt %d/%d): %s\n", attempt, MaxRetry, url)
 
 		resp, err = client.Do(req)
@@ -138,6 +138,7 @@ func Request(url string, logger *utils.Logger) (*http.Response, error) {
 // - Resolves relative links (e.g., "/about") to absolute URLs using the base URL.
 // - Skips invalid links, including:
 //   - Fragment links starting with `#` (e.g., "#section").
+//
 // - Logs every link found and provides information about ignored links for debugging.
 // - Filters out duplicate links using a map for efficient storage and retrieval.
 // - Normalization of URLs is handled elsewhere in the pipeline to ensure consistency.

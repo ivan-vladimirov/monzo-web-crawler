@@ -5,6 +5,7 @@ import (
 
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
+
 func TestIsExcludedFileType(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -77,12 +78,11 @@ func TestCalculateDepthFromPath(t *testing.T) {
 	}
 }
 
-
 func TestNormalizeURL(t *testing.T) {
 	testCases := []struct {
-		inputURL      string
-		expectedURL   string
-		expectError   bool
+		inputURL    string
+		expectedURL string
+		expectError bool
 	}{
 		// Basic URLs
 		{"http://example.com", "https://example.com", false},
@@ -95,8 +95,7 @@ func TestNormalizeURL(t *testing.T) {
 		{"https://example.com:port/path", "", true},
 		{"http://example.com:1234path", "", true},
 		{"https://example.com:8080", "https://example.com:8080", false}, // Valid port
-		{"https://example.com:99999999", "", true}, // Invalid port
-
+		{"https://example.com:99999999", "", true},                      // Invalid port
 
 		// Different Schemes
 		{"ftp://example.com/path", "https://example.com/path", false},
