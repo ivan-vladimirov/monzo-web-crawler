@@ -3,7 +3,6 @@ package parser
 import (
 	"net/url"
 	"strings"
-
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 )
 

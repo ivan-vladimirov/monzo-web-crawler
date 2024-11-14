@@ -75,9 +75,12 @@ func TestNormalizeURL(t *testing.T) {
 		{"https://example.com:port/path", "", true},
 		{"http://example.com:1234path", "", true},
 		{"https://example.com:8080", "https://example.com:8080", false}, // Valid port
+		{"https://example.com:99999999", "", true}, // Invalid port
+
 
 		// Different Schemes
 		{"ftp://example.com/path", "https://example.com/path", false},
+		{"example.com/path", "https://example.com/path", false},
 		{"http://example.com/path/to/resource", "https://example.com/path/to/resource", false},
 
 		// Trailing Slashes

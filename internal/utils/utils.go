@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-var validAbsoluteURLPattern = regexp.MustCompile(`^(https?|http|ftp)://([a-zA-Z0-9.-]+)(:[0-9]{1,5})?(/.*)?$`)
+var validAbsoluteURLPattern = regexp.MustCompile(`^((https?|ftp):\/\/)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(:[0-9]{1,5})?(\/.*)?$`)
 var validRelativeURLPattern = regexp.MustCompile(`^/[^?#]*$`)
 
 // Helper function to generate random jitter
@@ -41,11 +41,18 @@ func NormalizeURL(link string, baseURL string) (string, error) {
     }
 
     if parsedURL.Scheme == "" {
-        base, err := url.Parse(baseURL)
-        if err != nil {
-            return "", fmt.Errorf("error parsing base URL: %v", err)
-        }
-        parsedURL = base.ResolveReference(parsedURL)
+		if strings.Contains(link, ".") && !strings.HasPrefix(link, "/") {
+			parsedURL, err = url.Parse("http://" + link)
+			if err != nil {
+				return "", fmt.Errorf("error parsing bare domain: %v", err)
+			}
+		} else {
+			base, err := url.Parse(baseURL)
+			if err != nil {
+				return "", fmt.Errorf("error parsing base URL: %v", err)
+			}
+			parsedURL = base.ResolveReference(parsedURL)
+		}
     }
 
 
