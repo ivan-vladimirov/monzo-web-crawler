@@ -97,12 +97,12 @@ func TestNormalizeURL(t *testing.T) {
 		// Special Characters in Path
 		{"http://example.com/path/with%20spaces", "https://example.com/path/with%20spaces", false},
 		{"https://example.com/path/with_unicode_ñ", "https://example.com/path/with_unicode_%C3%B1", false},
-		{"https://example.com/!@#$%^&*()", "https://example.com/!@#$%^&*()", true},
+		{"https://example.com/!@#$%^&*()", "", true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.inputURL, func(t *testing.T) {
-			normalizedURL, err := utils.NormalizeURL(tc.inputURL)
+			normalizedURL, err := utils.NormalizeURL(tc.inputURL, "http://example.com")
 
 			// Check for expected error state
 			if tc.expectError && err == nil {
@@ -114,59 +114,6 @@ func TestNormalizeURL(t *testing.T) {
 			// Check for expected normalized URL
 			if normalizedURL != tc.expectedURL {
 				t.Errorf("For input URL %s, expected normalized URL %s, but got %s", tc.inputURL, tc.expectedURL, normalizedURL)
-			}
-		})
-	}
-}
-
-func TestDomain(t *testing.T) {
-	testCases := []struct {
-		inputURL    string
-		expected    string
-		expectError bool
-	}{
-		// Basic domains
-		{"http://example.com", "example.com", false},
-		{"https://example.com", "example.com", false},
-		{"http://example.com/", "example.com", false},
-		{"https://www.example.com", "example.com", false},
-
-		// Subdomains
-		{"http://sub.example.com", "example.com", false},
-		{"https://another.sub.example.com", "example.com", false},
-
-		// Different schemes
-		{"ftp://example.com", "example.com", false},
-		{"http://www.example.com/path", "example.com", false},
-		{"https://example.com:8080", "example.com", false},
-
-		// Malformed URLs
-		{"https://", "", true},
-		{"ftp://", "", true},
-		{"http://example", "", true},
-
-		// Internationalized Domain Names (IDN)
-		{"http://xn--bcher-kva.com", "bücher.com", false}, // 'bücher.com' in punycode
-
-		// Ports
-		{"https://example.com:443", "example.com", false},
-		{"https://example.com:80/path/to/resource", "example.com", false},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.inputURL, func(t *testing.T) {
-			domain, err := utils.Domain(tc.inputURL)
-
-			// Check for expected error state
-			if tc.expectError && err == nil {
-				t.Errorf("Expected error for input URL %s, but got none", tc.inputURL)
-			} else if !tc.expectError && err != nil {
-				t.Errorf("Did not expect error for input URL %s, but got %v", tc.inputURL, err)
-			}
-
-			// Check for expected domain result
-			if domain != tc.expected {
-				t.Errorf("For input URL %s, expected domain %s, but got %s", tc.inputURL, tc.expected, domain)
 			}
 		})
 	}

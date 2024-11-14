@@ -27,23 +27,19 @@ func RandFloat() float64 {
 // Returns:
 // - (string, error): A normalized URL if valid, or an error if the format is invalid.
 func NormalizeURL(link string, baseURL string) (string, error) {
-    // Check if the link matches either the absolute or relative URL pattern
-    if !validAbsoluteURLPattern.MatchString(link) && !validRelativeURLPattern.MatchString(link) {
+	if !validAbsoluteURLPattern.MatchString(link) && !validRelativeURLPattern.MatchString(link) {
         return "", errors.New("invalid URL format")
     }
 
-    // Parse the URL
     parsedURL, err := url.Parse(link)
     if err != nil {
         return "", fmt.Errorf("error parsing URL: %v", err)
     }
 
-    // Validate port if present
     if port := parsedURL.Port(); port != "" && !isValidPort(port) {
         return "", errors.New("invalid port specified in URL")
     }
 
-    // If the URL is relative, resolve it against the base URL
     if parsedURL.Scheme == "" {
         base, err := url.Parse(baseURL)
         if err != nil {
@@ -52,11 +48,11 @@ func NormalizeURL(link string, baseURL string) (string, error) {
         parsedURL = base.ResolveReference(parsedURL)
     }
 
-    // Normalize the URL
-    parsedURL.Scheme = "https"     // Enforce HTTPS for absolute URLs
-    parsedURL.Fragment = ""        // Remove fragments
-    parsedURL.RawQuery = ""        // Remove query parameters
-    parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") // Remove trailing slashes
+
+    parsedURL.Scheme = "https"     
+    parsedURL.Fragment = ""        
+    parsedURL.RawQuery = ""        
+    parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") 
 
     return parsedURL.String(), nil
 }
@@ -76,7 +72,6 @@ func CalculateDepthFromPath(currentURL string) (int, error) {
 		return 0, err
 	}
 
-	// Split the path and filter out empty segments
 	pathSegments := strings.Split(strings.Trim(current.Path, "/"), "/")
 	nonEmptySegments := 0
 	for _, segment := range pathSegments {
