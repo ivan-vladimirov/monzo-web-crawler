@@ -20,15 +20,18 @@ func main() {
 	maxDepth := flag.Int("max-depth", 3, "Maximum depth to crawl")
 	outputFile := flag.String("output", "output.json", "File to save the JSON output")
 	delay := flag.Duration("delay", 100*time.Millisecond, "Delay between requests (e.g., 100ms, 1s)")
+	
 	flag.Parse()
 
 	if *domain == "" {
 		logger.Error.Println("USAGE: ./monzo-web-crawler -url=http://monzo.com -max-depth=3 -delay=100ms -output=mozno.json")
 		return
 	}
+
 	fetcher := fetcher.NewFetcher(10 * time.Second)
 	parser := parser.NewParser()
 	rateLimiter := time.NewTicker(100 * time.Millisecond)
+	
 	defer rateLimiter.Stop()
 
 	cr := crawler.NewCrawler(fetcher, parser, logger, rateLimiter, 10)
@@ -37,6 +40,7 @@ func main() {
 		CrawledURLs:  make(map[string]bool),
 		VisitedPaths: make(map[string]bool),
 	}
+	
 	wg := &sync.WaitGroup{}
 
 	wg.Add(1)
@@ -48,6 +52,7 @@ func main() {
 	}{
 		URLs: crawled.CrawledURLs,
 	}, "", "  ")
+	
 	if err != nil {
 		logger.Error.Println("Error while marshalling URLs:", err)
 		return
