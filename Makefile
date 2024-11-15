@@ -1,13 +1,16 @@
 # Variables
 APP_NAME := monzo-web-crawler
 GO := go
+PKG := ./...
+TEST_FLAGS := -v 
+
 # Default values for custom flags
 URL ?= http://monzo.com
 MAX_DEPTH ?= 3
 DELAY ?= 100ms
 FILENAME ?= crawled.json
 
-.PHONY: build run clean help
+.PHONY: build run test clean help
 
 # Build the monzo-web-crawler binary
 build:
@@ -21,7 +24,11 @@ run: build
 	@echo "  Max Depth: $(MAX_DEPTH)"
 	@echo "  Delay: $(DELAY)"
 	@./monzo-web-crawler -url=$(URL) -max-depth=$(MAX_DEPTH) -delay=$(DELAY) -
-
+# Run tests
+test:
+	@echo "Running tests..."
+	go test $(PKG) $(TEST_FLAGS)
+	
 # Clean target to remove build artifacts
 clean:
 	@echo "Cleaning up build artifacts..."

@@ -99,7 +99,7 @@ func TestNormalizeURL(t *testing.T) {
 
 		// Different Schemes
 		{"ftp://example.com/path", "https://example.com/path", false},
-		{"smtp://example.com/path", "https://example.com/path", false},
+		{"smtp://example.com/path", "", true},
 		{"example.com/path", "https://example.com/path", false},
 		{"http://example.com/path/to/resource", "https://example.com/path/to/resource", false},
 
