@@ -9,6 +9,7 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/shared"
 	"sync"
 	"time"
 )
@@ -36,7 +37,7 @@ func main() {
 
 	cr := crawler.NewCrawler(fetcher, parser, logger, rateLimiter, 10)
 
-	crawled := &crawler.UsedURL{
+	crawled := &shared.UsedURL{
 		CrawledURLs:  make(map[string]bool),
 		VisitedPaths: make(map[string]bool),
 	}
@@ -52,7 +53,7 @@ func main() {
 	}{
 		URLs: crawled.CrawledURLs,
 	}, "", "  ")
-	
+
 	if err != nil {
 		logger.Error.Println("Error while marshalling URLs:", err)
 		return

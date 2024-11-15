@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/shared"
 	"net/url"
 	"strings"
 )
@@ -34,7 +35,7 @@ func NewParser() *Parser {
 //   5. Skip recursive paths that have already been visited.
 //   6. Add valid internal links to the result list.
 // - Logs ignored links (e.g., malformed URLs, external URLs, recursive paths).
-func (p *Parser) CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, visitedPaths *map[string]bool) []string {
+func (p *Parser) CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, used *shared.UsedURL) []string {
 	var internalUrls []string
 
 	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
@@ -70,12 +71,12 @@ func (p *Parser) CheckInternal(base string, links map[string]bool, logger *utils
 		}
 
 		path := parsedLink.Path
-		if (*visitedPaths)[path] {
+		if used.IsVisitedPath(path) {
 			logger.Info.Printf("Ignoring recursive path: %s\n", cleanedLink)
 			continue
 		}
 
-		(*visitedPaths)[path] = true
+		used.AddVisitedPath(path)
 
 		internalUrls = append(internalUrls, cleanedLink)
 		logger.Info.Println("Added internal URL:", cleanedLink)

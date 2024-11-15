@@ -6,43 +6,9 @@ import (
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/shared"
 )
 
-// UsedURL is a thread-safe structure for tracking visited CrawledURLs.
-type UsedURL struct {
-	CrawledURLs map[string]bool
-	VisitedPaths map[string]bool
-	Mux  sync.RWMutex
-}
-
-
-// Check if a URL is already visited (thread-safe read).
-func (u *UsedURL) IsCrawledURL(url string) bool {
-	u.Mux.RLock()
-	defer u.Mux.RUnlock()
-	return u.CrawledURLs[url]
-}
-
-// Mark a URL as visited (thread-safe write).
-func (u *UsedURL) AddCrawledURL(url string) {
-	u.Mux.Lock()
-	defer u.Mux.Unlock()
-	u.CrawledURLs[url] = true
-}
-
-// Add a visited path.
-func (u *UsedURL) AddVisitedPath(path string) {
-	u.Mux.Lock()
-	defer u.Mux.Unlock()
-	u.VisitedPaths[path] = true
-}
-
-// Check if a URL is already visited (thread-safe read).
-func (u *UsedURL) IsVisitedPath(path string) bool {
-	u.Mux.RLock()
-	defer u.Mux.RUnlock()
-	return u.VisitedPaths[path]
-}
 
 
 type Crawler struct {
@@ -73,7 +39,7 @@ func NewCrawler(fetcher *fetcher.Fetcher, parser *parser.Parser, logger *utils.L
 // - maxDepth (int): The maximum depth of recursion allowed.
 // - baseURL (string): The base URL of the domain to restrict crawling.
 // - delay (time.Duration): The delay between requests to avoid overloading the server.
-// - used (*UsedURL): A shared structure for tracking crawled URLs and visited paths, ensuring thread safety.
+// - used (*shared.UsedURL): A shared structure for tracking crawled URLs and visited paths, ensuring thread safety.
 // - wg (*sync.WaitGroup): A WaitGroup to synchronize goroutines and ensure all crawls complete before returning.
 // - logger (*utils.Logger): A logger instance for structured and detailed logging.
 //
@@ -85,7 +51,7 @@ func NewCrawler(fetcher *fetcher.Fetcher, parser *parser.Parser, logger *utils.L
 //
 // Errors:
 // - Logs and skips invalid URLs, fetch failures, or errors during normalization and parsing.
-func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
+func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Duration, used *shared.UsedURL, wg *sync.WaitGroup, logger *utils.Logger) {
 	defer wg.Done() 
 
 	depth, err := utils.CalculateDepthFromPath(url)
@@ -130,7 +96,7 @@ func (c *Crawler)  Crawl(url string, maxDepth int, baseURL string, delay time.Du
 	}
 	used.AddCrawledURL(canonicalURL)
 
-	internalLinks := c.parser.CheckInternal(url, links, logger, canonicalURL,&used.VisitedPaths)
+	internalLinks := c.parser.CheckInternal(url, links, logger, canonicalURL, used)
 	if len(internalLinks) == 0 {
 		logger.Info.Printf("[SKIPPED] No valid internal links found for URL: %s\n", canonicalURL)
 		return
