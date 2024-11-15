@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"os"
 )
 
 var validAbsoluteURLPattern = regexp.MustCompile(`^((https?|ftp):\/\/)?(([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|(\d{1,3}(\.\d{1,3}){3})|(\[([a-fA-F0-9:]+)\]))(:[0-9]{1,5})?(\/.*)?$`)
@@ -24,7 +24,6 @@ var excludedFileTypes = []string{".pdf", ".jpg", ".png", ".docx"}
 // Returns:
 // - error: Returns an error if marshaling or file operations fail.
 func SaveJSONToFile(jsonData []byte, filename string) error {
-	// Create or open the output file
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -39,6 +38,7 @@ func SaveJSONToFile(jsonData []byte, filename string) error {
 
 	return nil
 }
+
 // RandFloat generates a random float64 value between 0.0 and 1.0.
 //
 // Returns:
@@ -117,7 +117,19 @@ func isValidPort(port string) bool {
 	return true
 }
 
-// CalculateDepthFromPath determines the depth based on URL path segments relative to the base URL.
+// CalculateDepthFromPath calculates the depth of a URL path relative to the root of the domain.
+//
+// Parameters:
+// - currentURL (string): The URL whose path depth is to be calculated. The URL is expected to be a valid, well-formed string.
+//
+// Behavior:
+// 1. Parses the provided URL using the `net/url` package to extract its path component.
+// 2. Splits the path into segments, ignoring empty segments caused by leading/trailing slashes or redundant slashes.
+// 3. Calculates the depth as the number of valid segments in the path.
+//
+// Returns:
+// - (int): The calculated depth of the URL path as an integer.
+// - (error): An error if the URL is malformed or cannot be parsed.
 func CalculateDepthFromPath(currentURL string) (int, error) {
 	current, err := url.Parse(currentURL)
 	if err != nil {

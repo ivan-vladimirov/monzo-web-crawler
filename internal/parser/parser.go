@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/shared"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 	"net/url"
 	"strings"
 )
@@ -12,6 +12,7 @@ type Parser struct{}
 func NewParser() *Parser {
 	return &Parser{}
 }
+
 // CheckInternal filters and extracts internal URLs from a given set of links.
 // It determines whether a link belongs to the same domain as the base URL and avoids recursive paths.
 //
@@ -28,13 +29,20 @@ func NewParser() *Parser {
 // Behavior:
 // - Parses the base URL to extract its hostname for internal link comparison.
 // - Iterates over each candidate link to:
-//   1. Makes sure the base has a scheme.
-//   2. Normalize the link using the parent URL.
-//   3. Parse and validate the normalized link.
-//   4. Check if the hostname matches the base URL (i.e., the link is internal).
-//   5. Skip recursive paths that have already been visited.
-//   6. Add valid internal links to the result list.
+//  1. Makes sure the base has a scheme.
+//  2. Normalize the link using the parent URL.
+//  3. Parse and validate the normalized link.
+//  4. Check if the hostname matches the base URL (i.e., the link is internal).
+//  5. Skip recursive paths that have already been visited.
+//  6. Add valid internal links to the result list.
+//
 // - Logs ignored links (e.g., malformed URLs, external URLs, recursive paths).
+// 
+// Edge Cases:
+// - Skips malformed or invalid URLs that cannot be parsed.
+// - Ensures links with different schemes (e.g., http vs. https) are appropriately handled.
+// - Handles special characters and encoded links (e.g., '%20' for space).
+// - Avoids processing links that are fragments (#anchor) or relative (e.g., './page').
 func (p *Parser) CheckInternal(base string, links map[string]bool, logger *utils.Logger, parentURL string, used *shared.UsedURL) []string {
 	var internalUrls []string
 
@@ -54,25 +62,25 @@ func (p *Parser) CheckInternal(base string, links map[string]bool, logger *utils
 	for link := range links {
 		cleanedLink, err := utils.NormalizeURL(strings.TrimSpace(link), parentURL)
 		if err != nil {
-			logger.Error.Printf("Skipping malformed URL: %s, Error: %v\n", link, err)
+			logger.Error.Printf("[MALFORMED] Skipping malformed URL: %s, Error: %v\n", link, err)
 			continue
 		}
 
 		parsedLink, err := url.Parse(cleanedLink)
 
 		if err != nil {
-			logger.Error.Printf("Error parsing URL: %s, Error: %v\n", cleanedLink, err)
+			logger.Error.Printf("[PARSING ERROR] Error parsing URL: %s, Error: %v\n", cleanedLink, err)
 			continue
 		}
 
 		if parsedLink.Hostname() != baseHostname {
-			logger.Info.Println("Ignored external URL:", cleanedLink)
+			logger.Info.Println("[EXTERNAL] Ignored external URL:", cleanedLink)
 			continue
 		}
 
 		path := parsedLink.Path
 		if used.IsVisitedPath(path) {
-			logger.Info.Printf("Ignoring recursive path: %s\n", cleanedLink)
+			logger.Info.Printf("[ALREADY VISITED] Ignoring already visited path: %s\n", cleanedLink)
 			continue
 		}
 

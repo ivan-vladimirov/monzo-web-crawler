@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/crawler"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/fetcher"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/parser"
-	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
 	"github.com/ivan-vladimirov/monzo-web-crawler/internal/shared"
+	"github.com/ivan-vladimirov/monzo-web-crawler/internal/utils"
+	"os"
 	"sync"
 	"time"
 )
@@ -21,7 +21,7 @@ func main() {
 	maxDepth := flag.Int("max-depth", 3, "Maximum depth to crawl")
 	outputFile := flag.String("output", "output.json", "File to save the JSON output")
 	delay := flag.Duration("delay", 100*time.Millisecond, "Delay between requests (e.g., 100ms, 1s)")
-	
+
 	flag.Parse()
 
 	if *domain == "" {
@@ -32,7 +32,7 @@ func main() {
 	fetcher := fetcher.NewFetcher(10 * time.Second)
 	parser := parser.NewParser()
 	rateLimiter := time.NewTicker(100 * time.Millisecond)
-	
+
 	defer rateLimiter.Stop()
 
 	cr := crawler.NewCrawler(fetcher, parser, logger, rateLimiter, 10)
@@ -41,7 +41,7 @@ func main() {
 		CrawledURLs:  make(map[string]bool),
 		VisitedPaths: make(map[string]bool),
 	}
-	
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(1)
@@ -64,7 +64,6 @@ func main() {
 		logger.Error.Printf("Failed to save JSON to file: %v", err)
 		os.Exit(1)
 	}
-	
 
 	fmt.Println(string(crawledJSON))
 }
